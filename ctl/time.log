@@ -1,0 +1,1 @@
+{"start_ts":"1630246222","start_time":"2021-08-29 14:10:22","end_ts":"1630247422","end_time":"2021-08-29 14:30:22","bench_cmd":"sysbench --config-file=config --rand-type=uniform --tables=16 --table-size=10000000  --mysql-db=sbreadwrite oltp_read_write  --time=3600 run --time=1200"}
