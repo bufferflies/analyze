@@ -14,25 +14,57 @@
 package server
 
 import (
+	"log"
 	"net/http"
+
+	"github.com/bufferflies/pd-analyze/repository"
+
+	"github.com/bufferflies/pd-analyze/core"
 
 	"github.com/bufferflies/pd-analyze/config"
 	"github.com/gorilla/mux"
 )
 
 type Server struct {
-	config *config.Config
+	config  *config.Config
+	source  core.Source
+	checker core.Parser
+	storage repository.Storage
 }
 
 func NewServer(config *config.Config) *Server {
+	source := core.NewPrometheus(config.PrometheusAddress)
+	checker := core.NewChecker(source)
+	storage, err := repository.NewSqlite(config.StorageDir)
+	if err != nil {
+		log.Fatal("storage init failed", err)
+	}
 	return &Server{
-		config: config,
+		config:  config,
+		source:  source,
+		checker: checker,
+		storage: storage,
 	}
 }
+
+func CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Add("Access-Control-Allow-Headers", "X-Requested-With, Content-Type,Origin, Authorization, Accept, Client-Security-Token, Accept-Encoding, X-Auth-Token, content-type")
+		w.Header().Set("content-type", "application/json")
+		if r.Method == http.MethodOptions {
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (server *Server) CreateRoute() *mux.Router {
 	router := mux.NewRouter()
-	analyze := NewPromAnalyze(server.config.PrometheusAddress)
-	router.HandleFunc("/scheduler/hot", analyze.AnalyzeHotSchedule).Methods(http.MethodPost)
+	analyze := NewPromAnalyze(server)
+	router.HandleFunc("/analyze/{id}", analyze.AnalyzeSchedule).Methods(http.MethodPost)
+	router.HandleFunc("/analyze/{id}", analyze.GetResult).Methods(http.MethodGet)
+	router.Use(CORSMiddleware)
 
 	return router
 }

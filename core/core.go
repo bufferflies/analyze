@@ -5,5 +5,5 @@ type Source interface {
 }
 
 type Parser interface {
-	Apply(start, end string, cmd string) (v interface{}, err error)
+	Apply(start, end string, name, metrics, cmd string) (v interface{}, err error)
 }

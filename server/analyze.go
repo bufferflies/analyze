@@ -18,11 +18,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
+
+	"github.com/gorilla/mux"
+
+	"github.com/bufferflies/pd-analyze/errs"
+
+	"github.com/bufferflies/pd-analyze/repository"
 
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/stat"
-
-	"github.com/bufferflies/pd-analyze/core"
 )
 
 var (
@@ -34,31 +39,13 @@ var (
 	operators = map[string]string{"mean": "mean(%s)", "std": "std(%s)"}
 )
 
-// Record log record
-type Record struct {
-	Start   string                      `json:"start_ts"`
-	End     string                      `json:"end_ts"`
-	Cmd     string                      `json:"bench_cmd"`
-	Metrics map[string]map[string]index `json:"metrics"`
-}
-
-type index struct {
-	Min  float64   `json:"min"`
-	Max  float64   `json:"max"`
-	Mean float64   `json:"mean"`
-	Std  float64   `json:"std"`
-	Data []float64 `json:"data"`
-}
-
 type PromAnalyze struct {
-	checker *core.Checker
+	server *Server
 }
 
-func NewPromAnalyze(address string) *PromAnalyze {
-	source := core.NewPrometheus(address)
-
+func NewPromAnalyze(server *Server) *PromAnalyze {
 	return &PromAnalyze{
-		checker: core.NewChecker(&source),
+		server: server,
 	}
 }
 
@@ -67,41 +54,76 @@ func NewPromAnalyze(address string) *PromAnalyze {
 // @Produce json
 // @Success 200 {object} pdpb.GetMembersResponse
 // @Failure 500 {string} string "PD server failed to proceed the request."
-// @Router /scheduler/hot [get]
-func (analyze *PromAnalyze) AnalyzeHotSchedule(w http.ResponseWriter, r *http.Request) {
+// @Router /analyze/{id} [Post]
+func (analyze *PromAnalyze) AnalyzeSchedule(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
 	body, err := ioutil.ReadAll(r.Body)
-	w.Header().Set("content-type", "text/json")
 	if err != nil {
 		fmt.Fprint(w, err)
 		return
 	}
-	var records []Record
+	var records []repository.Record
 
 	if err := json.Unmarshal(body, &records); err != nil {
-		fmt.Fprintf(w, err.Error())
+		fmt.Fprint(w, err.Error())
 		return
 	}
 	for i := range records {
-		records[i].Metrics = make(map[string]map[string]index)
+		records[i].Metrics = make(map[string]map[string]repository.Index)
 		if err := analyze.check(&records[i]); err != nil {
-			fmt.Fprintf(w, err.Error())
+			fmt.Fprint(w, err.Error())
 			return
 		}
 	}
-	rsp, err := json.Marshal(records)
+	err = analyze.server.storage.Save(id, records)
 	if err != nil {
-		fmt.Fprintf(w, err.Error())
+		fmt.Fprint(w, err.Error())
 		return
 	}
-	fmt.Fprintf(w, string(rsp))
+	fmt.Fprint(w, "ok")
 }
 
-func (analyze *PromAnalyze) check(records *Record) error {
+// @Tags analyze
+// @Summary analyze hot scheduler
+// @Produce json
+// @Success 200 {object} pdpb.GetMembersResponse
+// @Failure 500 {string} string "PD server failed to proceed the request."
+// @Router /analyze/{id} [get]
+func (analyze *PromAnalyze) GetResult(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+	if len(id) == 0 {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+	records, err := analyze.server.storage.Get(id)
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+	result := make(map[string]interface{})
+	result["metrics"] = extractTable(records)
+	result["table"] = extractData(records)
+	rsp, err := json.Marshal(result)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	err = analyze.server.storage.Save(id, records)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	fmt.Fprint(w, string(rsp))
+}
+
+func (analyze *PromAnalyze) check(records *repository.Record) error {
 	for name, metrics := range metrics {
-		records.Metrics[name] = make(map[string]index)
+		records.Metrics[name] = make(map[string]repository.Index)
 		for opName, m := range operators {
 			index := records.Metrics[name][opName]
-			d, err := analyze.checker.Apply(records.Start, records.End, name, metrics, fmt.Sprintf(m, name))
+			d, err := analyze.server.checker.Apply(records.Start, records.End, name, metrics, fmt.Sprintf(m, name))
 			if err != nil {
 				return err
 			}
@@ -115,4 +137,32 @@ func (analyze *PromAnalyze) check(records *Record) error {
 		}
 	}
 	return nil
+}
+
+// todo: should move to js
+func extractData(records []repository.Record) map[string][]float64 {
+	result := make(map[string][]float64)
+	for _, record := range records {
+		for k, v := range record.Metrics {
+			for op, data := range v {
+				s := strings.Join([]string{record.Cmd, k, op}, "_")
+				result[s] = data.Data
+			}
+		}
+	}
+	return result
+}
+
+// todo: should move to js
+func extractTable(records []repository.Record) map[string]repository.Index {
+	result := make(map[string]repository.Index)
+	for _, record := range records {
+		for k, v := range record.Metrics {
+			for op, data := range v {
+				s := strings.Join([]string{record.Cmd, k, op}, "_")
+				result[s] = data
+			}
+		}
+	}
+	return result
 }

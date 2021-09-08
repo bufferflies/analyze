@@ -25,9 +25,9 @@ type Prometheus struct {
 	client  http.Client
 }
 
-func NewPrometheus(address string) Prometheus {
+func NewPrometheus(address string) *Prometheus {
 	client := http.Client{}
-	return Prometheus{
+	return &Prometheus{
 		Step:    "15s",
 		client:  client,
 		Address: address,

@@ -24,15 +24,6 @@ func NewChecker(source Source) *Checker {
 	}
 }
 
-//func NewChecker(address string) *Checker {
-//	s := NewPrometheus(address)
-//	r, _ := regexp.Compile("\\(([a-zA-Z0-9_,={}']+?)\\)")
-//	return &Checker{
-//		source: &s,
-//		re:     r,
-//	}
-//}
-
 var ExpressionMap = make(map[string]govaluate.ExpressionFunction)
 
 func RegisterFunction(name string, ex govaluate.ExpressionFunction) {
