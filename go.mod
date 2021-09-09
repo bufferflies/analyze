@@ -8,6 +8,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.8
+	github.com/pingcap/log v0.0.0-20210625125904-98ed8e2eb1c7
 	github.com/stretchr/testify v1.7.0
 	gonum.org/v1/gonum v0.9.3
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
