@@ -2,19 +2,49 @@ package main
 
 import (
 	"fmt"
-	"net/http"
+	"io"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 
-	"github.com/bufferflies/pd-analyze/config"
-	"github.com/bufferflies/pd-analyze/server"
-	"github.com/pingcap/log"
+	"github.com/bufferflies/pd-analyze/ctl"
 )
 
 func main() {
-	config := config.NewConfig()
-	server := server.NewServer(config)
-	router := server.CreateRoute()
-	log.Info("server start")
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", config.ListenPort), router); err != nil {
-		log.Fatal("server run failed ")
+	pdAddr := os.Getenv("PD_ADDR")
+	if pdAddr != "" {
+		os.Args = append(os.Args, "-u", pdAddr)
 	}
+
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+
+	go func() {
+		sig := <-sc
+		fmt.Printf("\nGot signal [%v] to exit.\n", sig)
+		switch sig {
+		case syscall.SIGTERM:
+			os.Exit(0)
+		default:
+			os.Exit(1)
+		}
+	}()
+
+	var input []string
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) == 0 {
+		b, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		input = strings.Split(strings.TrimSpace(string(b[:])), " ")
+	}
+
+	ctl.MainStart(append(os.Args[1:], input...))
 }

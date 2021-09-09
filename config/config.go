@@ -13,21 +13,13 @@
 // limitations under the License.
 package config
 
-import "flag"
+import (
+	"flag"
+)
 
 type Config struct {
-	ListenPort        int    `json:"listen_port" toml:"listen_port"`
+	ListenAddress     string `json:"listen_address" toml:"listen_port"`
 	PrometheusAddress string `json:"prometheus_address" toml:"prometheus_address"`
 	StorageDir        string `json:"storage_dir" toml:"storage_dir"`
 	flagSet           *flag.FlagSet
-}
-
-func NewConfig() *Config {
-	cfg := &Config{}
-	cfg.flagSet = flag.NewFlagSet("pd", flag.ContinueOnError)
-	fs := cfg.flagSet
-	fs.StringVar(&cfg.PrometheusAddress, "prometheus_address", "http://172.16.4.3:22815", "prometheus address")
-	fs.IntVar(&cfg.ListenPort, "port", 8080, "listen port")
-	fs.StringVar(&cfg.StorageDir, "storage_dir", "./sqlit.db", "storage dir")
-	return cfg
 }

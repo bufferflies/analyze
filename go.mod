@@ -4,13 +4,14 @@ go 1.16
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
 	github.com/gorilla/mux v1.8.0
-	github.com/kr/pretty v0.1.0 // indirect
+	github.com/mattn/go-shellwords v1.0.12
 	github.com/mattn/go-sqlite3 v1.14.8
 	github.com/pingcap/log v0.0.0-20210625125904-98ed8e2eb1c7
+	github.com/spf13/cobra v1.2.1
+	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
+	go.uber.org/zap v1.17.0
 	gonum.org/v1/gonum v0.9.3
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

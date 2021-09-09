@@ -21,10 +21,11 @@ type Storage interface {
 
 // Record log record
 type Record struct {
-	Start   string                      `json:"start_ts"`
-	End     string                      `json:"end_ts"`
-	Cmd     string                      `json:"bench_cmd"`
-	Metrics map[string]map[string]Index `json:"metrics"` //struct [metrics][operator]value
+	Workload string                      `json:"workload"`
+	Start    string                      `json:"start_ts"`
+	End      string                      `json:"end_ts"`
+	Cmd      string                      `json:"bench_cmd"`
+	Metrics  map[string]map[string]Index `json:"metrics"` //struct [metrics][operator]value
 }
 
 type Index struct {
