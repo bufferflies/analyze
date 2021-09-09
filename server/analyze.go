@@ -110,11 +110,6 @@ func (analyze *PromAnalyze) GetResult(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err.Error())
 		return
 	}
-	err = analyze.server.storage.Save(id, records)
-	if err != nil {
-		fmt.Fprint(w, err.Error())
-		return
-	}
 	fmt.Fprint(w, string(rsp))
 }
 
@@ -160,6 +155,8 @@ func extractTable(records []repository.Record) map[string]repository.Index {
 		for k, v := range record.Metrics {
 			for op, data := range v {
 				s := strings.Join([]string{record.Cmd, k, op}, "_")
+				data.Start = record.Start
+				data.End = record.End
 				result[s] = data
 			}
 		}

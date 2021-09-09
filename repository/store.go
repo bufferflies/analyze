@@ -28,9 +28,11 @@ type Record struct {
 }
 
 type Index struct {
-	Min  float64   `json:"min"`
-	Max  float64   `json:"max"`
-	Mean float64   `json:"mean"`
-	Std  float64   `json:"std"`
-	Data []float64 `json:"data"`
+	Min   float64   `json:"min"`
+	Max   float64   `json:"max"`
+	Mean  float64   `json:"mean"`
+	Std   float64   `json:"std"`
+	Data  []float64 `json:"data"`
+	Start string    `json:"start_ts"`
+	End   string    `json:"end_ts"`
 }
