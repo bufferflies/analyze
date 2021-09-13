@@ -20,6 +20,6 @@ import (
 type Config struct {
 	ListenAddress     string `json:"listen_address" toml:"listen_port"`
 	PrometheusAddress string `json:"prometheus_address" toml:"prometheus_address"`
-	StorageDir        string `json:"storage_dir" toml:"storage_dir"`
+	StorageAddress    string `json:"storage_address" toml:"storage_address"`
 	flagSet           *flag.FlagSet
 }

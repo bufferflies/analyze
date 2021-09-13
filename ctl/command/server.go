@@ -30,7 +30,7 @@ func NewServerCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringP("listen_address", "a", "localhost:8080", "analyze listen address")
 	cmd.PersistentFlags().StringP("prometheus_address", "p", "http://172.16.4.3:22815/", "address of prometheus")
-	cmd.PersistentFlags().StringP("storage_path", "s", "./test.db", "storage of path")
+	cmd.PersistentFlags().StringP("storage_address", "s", "172.16.4.3:25831", "storage address")
 	return cmd
 }
 
@@ -51,7 +51,7 @@ func GetConfig(cmd *cobra.Command) *config2.Config {
 		cmd.Printf("address failed, err:%v", err)
 	}
 	config.ListenAddress = addr
-	if config.StorageDir, err = cmd.Flags().GetString("storage_path"); err != nil {
+	if config.StorageAddress, err = cmd.Flags().GetString("storage_address"); err != nil {
 		cmd.Printf("address failed, err:%v", err)
 	}
 	if config.PrometheusAddress, err = cmd.Flags().GetString("prometheus_address"); err != nil {

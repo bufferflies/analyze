@@ -70,7 +70,7 @@ func (analyze *PromAnalyze) AnalyzeSchedule(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	for i := range records {
-		records[i].Metrics = make(map[string]map[string]repository.Index)
+		records[i].Metrics = make(map[string]float64)
 		if err := analyze.check(&records[i]); err != nil {
 			fmt.Fprint(w, err.Error())
 			return
@@ -102,10 +102,7 @@ func (analyze *PromAnalyze) GetResult(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, errs.Argument_Not_Match.Error())
 		return
 	}
-	result := make(map[string]interface{})
-	result["metrics"] = extractTable(records)
-	result["table"] = extractData(records)
-	rsp, err := json.Marshal(result)
+	rsp, err := json.Marshal(records)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return
@@ -115,51 +112,19 @@ func (analyze *PromAnalyze) GetResult(w http.ResponseWriter, r *http.Request) {
 
 func (analyze *PromAnalyze) check(records *repository.Record) error {
 	for name, metrics := range metrics {
-		records.Metrics[name] = make(map[string]repository.Index)
+		records.Metrics = make(map[string]float64)
 		for opName, m := range operators {
-			index := records.Metrics[name][opName]
+			prefix := strings.Join([]string{name, opName}, "_")
 			d, err := analyze.server.checker.Apply(records.Start, records.End, name, metrics, fmt.Sprintf(m, name))
 			if err != nil {
 				return err
 			}
 			data := d.([]float64)
-			index.Data = data
-			index.Min = floats.Min(data)
-			index.Max = floats.Max(data)
-			index.Mean = stat.Mean(data, nil)
-			index.Std = stat.StdDev(data, nil)
-			records.Metrics[name][opName] = index
+			records.Metrics[strings.Join([]string{prefix, "min"}, "_")] = floats.Min(data)
+			records.Metrics[strings.Join([]string{prefix, "max"}, "_")] = floats.Max(data)
+			records.Metrics[strings.Join([]string{prefix, "mean"}, "_")] = stat.Mean(data, nil)
+			records.Metrics[strings.Join([]string{prefix, "std"}, "_")] = stat.StdDev(data, nil)
 		}
 	}
 	return nil
-}
-
-// todo: should move to js
-func extractData(records []repository.Record) map[string][]float64 {
-	result := make(map[string][]float64)
-	for _, record := range records {
-		for k, v := range record.Metrics {
-			for op, data := range v {
-				s := strings.Join([]string{record.Cmd, k, op}, "_")
-				result[s] = data.Data
-			}
-		}
-	}
-	return result
-}
-
-// todo: should move to js
-func extractTable(records []repository.Record) map[string]repository.Index {
-	result := make(map[string]repository.Index)
-	for _, record := range records {
-		for k, v := range record.Metrics {
-			for op, data := range v {
-				s := strings.Join([]string{record.Cmd, k, op}, "_")
-				data.Start = record.Start
-				data.End = record.End
-				result[s] = data
-			}
-		}
-	}
-	return result
 }

@@ -13,25 +13,34 @@
 // limitations under the License.
 package repository
 
-// save
-type Storage interface {
-	Save(id string, records []Record) error
-	Get(id string) (records []Record, err error)
+import (
+	"fmt"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestSave(t *testing.T) {
+	te := assert.New(t)
+	manager, err := NewMysqlManager("172.16.4.3:25831", "test1")
+	te.Nil(err)
+	bench := &Bench{
+		BenID: "test",
+		Start: time.Now(),
+		End:   time.Now().Add(time.Minute),
+	}
+	manager.SaveBench(bench)
+	fmt.Sprintf("id:%d", bench.ID)
+
 }
 
-// Record log record
-type Record struct {
-	Workload string             `json:"workload"`
-	Start    string             `json:"start_ts"`
-	End      string             `json:"end_ts"`
-	Cmd      string             `json:"bench_cmd"`
-	Metrics  map[string]float64 `json:"metrics"` //key metrics_max_avg
-}
-
-type Index struct {
-	Min  float64   `json:"min"`
-	Max  float64   `json:"max"`
-	Mean float64   `json:"mean"`
-	Std  float64   `json:"std"`
-	Data []float64 `json:"data"`
+func TestTimeStamp(t *testing.T) {
+	te := assert.New(t)
+	s := "1631184147"
+	r, err := strconv.ParseInt(s, 10, 64)
+	te.Nil(err)
+	//format := "2006-01-01 12:33:36"
+	fmt.Println(time.Unix(r, 0))
 }

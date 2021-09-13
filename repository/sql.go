@@ -13,25 +13,40 @@
 // limitations under the License.
 package repository
 
-// save
-type Storage interface {
-	Save(id string, records []Record) error
-	Get(id string) (records []Record, err error)
+import "time"
+
+type Bench struct {
+	ID      uint   `gorm:"AUTO_INCREMENT"`
+	BenchID string `gorm:"size:10"`
+	Start   time.Time
+	End     time.Time
 }
 
-// Record log record
-type Record struct {
-	Workload string             `json:"workload"`
-	Start    string             `json:"start_ts"`
-	End      string             `json:"end_ts"`
-	Cmd      string             `json:"bench_cmd"`
-	Metrics  map[string]float64 `json:"metrics"` //key metrics_max_avg
+func (Bench) TableName() string {
+	return "bench"
 }
 
-type Index struct {
-	Min  float64   `json:"min"`
-	Max  float64   `json:"max"`
-	Mean float64   `json:"mean"`
-	Std  float64   `json:"std"`
-	Data []float64 `json:"data"`
+type Workload struct {
+	ID     uint `gorm:"AUTO_INCREMENT"`
+	BenID  uint
+	Name   string
+	Start  time.Time
+	End    time.Time
+	Config string
+	Cmd    string
+}
+
+func (Workload) TableName() string {
+	return "workload"
+}
+
+type Metrics struct {
+	ID    uint `gorm:"AUTO_INCREMENT"`
+	WID   uint
+	Key   string
+	Value float64
+}
+
+func (Metrics) TableName() string {
+	return "metrics"
 }
