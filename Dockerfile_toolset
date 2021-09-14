@@ -1,0 +1,4 @@
+FROM hub.pingcap.net/gaosong/toolset:v3
+COPY pd-analyze /bin
+ENV PATH="$PATH:/bin"
+CMD ["/bin/bash"]
