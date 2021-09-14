@@ -17,7 +17,7 @@ import "time"
 
 type Bench struct {
 	ID      uint   `gorm:"AUTO_INCREMENT"`
-	BenchID string `gorm:"size:10"`
+	BenchID string `gorm:"size:30"`
 	Start   time.Time
 	End     time.Time
 }
