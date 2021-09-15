@@ -90,7 +90,7 @@ func (m *Manager) Get(benchID string) (records []Record, err error) {
 		result[i] = Record{
 			Metrics:  ms,
 			Start:    strconv.FormatInt(w.Start.Unix(), 10),
-			End:      strconv.FormatInt(w.Start.Unix(), 10),
+			End:      strconv.FormatInt(w.End.Unix(), 10),
 			Cmd:      w.Cmd,
 			Workload: w.Name,
 		}
