@@ -62,8 +62,11 @@ func CORSMiddleware(next http.Handler) http.Handler {
 func (server *Server) CreateRoute() *mux.Router {
 	router := mux.NewRouter()
 	analyze := NewPromAnalyze(server)
+	router.HandleFunc("/analyze/getAll", analyze.GetAll).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/analyze/getMetrics", analyze.GetMetrics).Methods(http.MethodGet, http.MethodOptions)
 	router.HandleFunc("/analyze/{id}", analyze.AnalyzeSchedule).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/analyze/{id}", analyze.GetResult).Methods(http.MethodGet, http.MethodOptions)
+
 	router.Use(CORSMiddleware)
 
 	return router

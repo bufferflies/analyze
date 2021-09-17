@@ -63,6 +63,7 @@ func (m *Manager) Save(id string, records []Record) error {
 				WID:   workloads[i].ID,
 				Key:   k,
 				Value: v,
+				Start: workloads[i].Start,
 			}
 			metrics = append(metrics, m)
 		}
@@ -96,6 +97,39 @@ func (m *Manager) Get(benchID string) (records []Record, err error) {
 		}
 	}
 	return result, err
+}
+
+func (m *Manager) GetMetrics(workload string, limit int, metrics []string) (map[string][]*Metrics, error) {
+	var workloads []Workload
+	m.db.Select("id", "start", "end").Where(&Workload{Name: workload}).Limit(limit).Order("id").Find(&workloads)
+	if len(workloads) == 0 {
+		return nil, errs.Result_Not_Match
+	}
+	result := make(map[string][]*Metrics, len(metrics))
+	for _, v := range metrics {
+		var res []*Metrics
+		ids := make([]uint, len(workloads))
+		for i, v := range workloads {
+			ids[i] = v.ID
+		}
+		m.db.Where("metrics.key = ? And w_id in ?", v, ids).Order("w_id").Find(&res)
+		result[v] = res
+	}
+
+	return result, nil
+}
+
+func (m *Manager) GetAll(workload string, version string, page int, size int) ([]*Workload, int64, error) {
+	var workloads []*Workload
+	offset := (page - 1) * size
+	module := m.db.Model(&Workload{}).Where(&Workload{Name: workload})
+
+	var count int64
+	module.Count(&count)
+
+	module.Offset(offset).Limit(size).Find(&workloads)
+
+	return workloads, count, nil
 }
 
 func (m *Manager) SaveBench(bench *Bench) {

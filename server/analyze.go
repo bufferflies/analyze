@@ -18,14 +18,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 
-	"github.com/gorilla/mux"
-
 	"github.com/bufferflies/pd-analyze/errs"
-
 	"github.com/bufferflies/pd-analyze/repository"
-
+	"github.com/gorilla/mux"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/stat"
 )
@@ -60,7 +58,7 @@ func (analyze *PromAnalyze) AnalyzeSchedule(w http.ResponseWriter, r *http.Reque
 	id := vars["id"]
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		fmt.Fprint(w, err)
+		fmt.Fprint(w, err.Error())
 		return
 	}
 	var records []repository.Record
@@ -108,6 +106,77 @@ func (analyze *PromAnalyze) GetResult(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprint(w, string(rsp))
+}
+
+// @Tags analyze
+// @Summary analyze hot scheduler
+// @Produce json
+// @Success 200 {object} pdpb.GetMembersResponse
+// @Failure 500 {string} string "PD server failed to proceed the request."
+// @Router /analyze/getAll [get]
+func (analyze *PromAnalyze) GetAll(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	workload := query.Get("workload")
+	version := query.Get("version")
+	page, err := strconv.Atoi(query.Get("page"))
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+	size, err := strconv.Atoi(query.Get("size"))
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+	loads, count, err := analyze.server.storage.GetAll(workload, version, page, size)
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+	result := make(map[string]interface{})
+	result["workloads"] = loads
+	result["count"] = count
+	rsp, err := json.Marshal(result)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	fmt.Fprint(w, string(rsp))
+}
+
+// @Tags analyze
+// @Summary analyze hot scheduler
+// @Produce json
+// @Success 200 {object} pdpb.GetMembersResponse
+// @Failure 500 {string} string "PD server failed to proceed the request."
+// @Router /analyze/getMetrics [get]
+func (analyze *PromAnalyze) GetMetrics(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	query := r.URL.Query()
+	workload := query.Get("workload")
+	limit, err := strconv.Atoi(query.Get("limit"))
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+
+	metrics := query["metrics"]
+	rst, err := analyze.server.storage.GetMetrics(workload, limit, metrics)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	body, err := json.Marshal(rst)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	fmt.Fprint(w, string(body))
+	return
 }
 
 func (analyze *PromAnalyze) check(records *repository.Record) error {

@@ -45,6 +45,7 @@ type Metrics struct {
 	WID   uint
 	Key   string
 	Value float64
+	Start time.Time
 }
 
 func (Metrics) TableName() string {

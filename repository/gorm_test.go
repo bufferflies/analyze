@@ -27,9 +27,9 @@ func TestSave(t *testing.T) {
 	manager, err := NewMysqlManager("172.16.4.3:25831", "test1")
 	te.Nil(err)
 	bench := &Bench{
-		BenID: "test",
-		Start: time.Now(),
-		End:   time.Now().Add(time.Minute),
+		BenchID: "test",
+		Start:   time.Now(),
+		End:     time.Now().Add(time.Minute),
 	}
 	manager.SaveBench(bench)
 	fmt.Sprintf("id:%d", bench.ID)
