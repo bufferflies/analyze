@@ -14,6 +14,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -26,24 +27,28 @@ import (
 )
 
 type Server struct {
-	config  *config.Config
-	source  core.Source
-	checker core.Parser
-	storage repository.Storage
+	config          *config.Config
+	source          core.Source
+	checker         core.Parser
+	projectStorage  repository.ProjectStorage
+	workloadStorage repository.WorkloadStorage
 }
 
 func NewServer(config *config.Config) *Server {
 	source := core.NewPrometheus(config.PrometheusAddress)
 	checker := core.NewChecker(source)
-	storage, err := repository.NewMysqlManager(config.StorageAddress, "test1")
+	db, err := repository.NewMysqlManager(config.StorageAddress, "test1")
 	if err != nil {
 		log.Fatal("storage init failed", err)
 	}
+	projectStorage := repository.NewProjectDao(db)
+	workloadStorage := repository.NewWorkload(db, projectStorage)
 	return &Server{
-		config:  config,
-		source:  source,
-		checker: checker,
-		storage: storage,
+		config:          config,
+		source:          source,
+		checker:         checker,
+		projectStorage:  projectStorage,
+		workloadStorage: workloadStorage,
 	}
 }
 
@@ -61,12 +66,26 @@ func CORSMiddleware(next http.Handler) http.Handler {
 
 func (server *Server) CreateRoute() *mux.Router {
 	router := mux.NewRouter()
-	analyze := NewPromAnalyze(server)
-	router.HandleFunc("/analyze/getAll", analyze.GetAll).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/analyze/getMetrics", analyze.GetMetrics).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/analyze/{id}", analyze.AnalyzeSchedule).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/analyze/{id}", analyze.GetResult).Methods(http.MethodGet, http.MethodOptions)
 
+	projectRouter := router.PathPrefix("/project").Subrouter()
+	projectServer := NewProjectServer(server.projectStorage)
+	projectRouter.HandleFunc("/", projectServer.GetProjects).Methods(http.MethodGet)
+	projectRouter.HandleFunc("/new", projectServer.NewProject).Methods(http.MethodPost)
+	projectRouter.HandleFunc("/session/new", projectServer.NewSession).Methods(http.MethodPost)
+	projectRouter.HandleFunc("/sessions/{project_id}", projectServer.GetSessions).Methods(http.MethodGet)
+	projectRouter.HandleFunc("/session/{session_id}", projectServer.GetSession).Methods(http.MethodGet)
+
+	analyzeRouters := router.PathPrefix("/analyze").Subrouter()
+	analyze := NewPromAnalyze(server)
+	analyzeRouters.HandleFunc("/metrics", analyze.GetMetrics).Methods(http.MethodGet, http.MethodOptions)
+	analyzeRouters.HandleFunc("//{session_id}", analyze.GetWorkloads).Methods(http.MethodGet, http.MethodOptions)
+
+	toolRouters := router.PathPrefix("/tools").Subrouter()
+	tools := NewTools(server)
+	toolRouters.HandleFunc("/tools/{session_id}/{bench_name}", tools.AnalyzeSchedule).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/*", func(writer http.ResponseWriter, request *http.Request) {
+		fmt.Fprint(writer, "OK")
+	}).Methods(http.MethodOptions)
 	router.Use(CORSMiddleware)
 
 	return router

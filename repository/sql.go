@@ -13,27 +13,30 @@
 // limitations under the License.
 package repository
 
-import "time"
+import (
+	"fmt"
+	"time"
 
-type Bench struct {
-	ID      uint   `gorm:"AUTO_INCREMENT"`
-	BenchID string `gorm:"size:30"`
-	Start   time.Time
-	End     time.Time
-}
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+)
 
-func (Bench) TableName() string {
-	return "bench"
+func NewMysqlManager(address string, database string) (*gorm.DB, error) {
+	dsn := fmt.Sprintf("root@tcp(%s)/%s?charset=utf8mb4&parseTime=True&loc=Local", address, database)
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	return db, err
 }
 
 type Workload struct {
-	ID     uint `gorm:"AUTO_INCREMENT"`
-	BenID  uint
-	Name   string
-	Start  time.Time
-	End    time.Time
-	Config string
-	Cmd    string
+	ID           uint `gorm:"AUTO_INCREMENT"`
+	SessionID    uint
+	Name         string
+	Start        time.Time
+	End          time.Time
+	Config       string
+	Cmd          string
+	TargetObject float64
+	BenchName    string
 }
 
 func (Workload) TableName() string {
@@ -50,4 +53,28 @@ type Metrics struct {
 
 func (Metrics) TableName() string {
 	return "metrics"
+}
+
+type Project struct {
+	ID          uint `gorm:"AUTO_INCREMENT"`
+	Name        string
+	Description string
+}
+
+func (Project) TableName() string {
+	return "project"
+}
+
+type Session struct {
+	ID           uint `gorm:"AUTO_INCREMENT"`
+	PID          uint
+	Name         string
+	Object       string
+	TargetObject string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+func (Session) TableName() string {
+	return "session"
 }

@@ -13,12 +13,13 @@
 // limitations under the License.
 package repository
 
-// save
 type Storage interface {
 	Save(id string, records []Record) error
 	Get(id string) (records []Record, err error)
 	GetMetrics(workload string, limit int, metrics []string) (map[string][]*Metrics, error)
 	GetAll(workload string, version string, page int, size int) ([]*Workload, int64, error)
+	GetConfig() []string
+	SaveBenchConfig(targetMetrics string, workloads, metrics []string)
 }
 
 // Record log record

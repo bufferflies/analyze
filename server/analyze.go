@@ -16,25 +16,11 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/bufferflies/pd-analyze/errs"
-	"github.com/bufferflies/pd-analyze/repository"
 	"github.com/gorilla/mux"
-	"gonum.org/v1/gonum/floats"
-	"gonum.org/v1/gonum/stat"
-)
-
-var (
-	metrics = map[string]string{
-		"tikv_cpu":   "sum(rate(tikv_thread_cpu_seconds_total{}[1m])) by (instance)",
-		"tikv_write": "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=\"wal_file_bytes\"}[1m])) by (instance)",
-		"tikv_read":  "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=~\"bytes_read|iter_bytes_read\"}[1m])) by (instance)",
-	}
-	operators = map[string]string{"mean": "mean(%s)", "std": "std(%s)"}
 )
 
 type PromAnalyze struct {
@@ -50,52 +36,18 @@ func NewPromAnalyze(server *Server) *PromAnalyze {
 // @Tags analyze
 // @Summary analyze hot scheduler
 // @Produce json
-// @Success 200 {object} pdpb.GetMembersResponse
+// @Success 200 {object}
 // @Failure 500 {string} string "PD server failed to proceed the request."
-// @Router /analyze/{id} [Post]
-func (analyze *PromAnalyze) AnalyzeSchedule(w http.ResponseWriter, r *http.Request) {
+// @Router /analyze/{session_id}/{bench_name} [get]
+func (analyze *PromAnalyze) GetWorkloadsByBenchName(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := vars["id"]
-	body, err := ioutil.ReadAll(r.Body)
+	id, err := strconv.ParseUint(vars["session_id"], 10, 10)
 	if err != nil {
-		fmt.Fprint(w, err.Error())
+		fmt.Fprint(w, err)
 		return
 	}
-	var records []repository.Record
-
-	if err := json.Unmarshal(body, &records); err != nil {
-		fmt.Fprint(w, err.Error())
-		return
-	}
-	for i := range records {
-		records[i].Metrics = make(map[string]float64)
-		if err := analyze.check(&records[i]); err != nil {
-			fmt.Fprint(w, err.Error())
-			return
-		}
-	}
-	err = analyze.server.storage.Save(id, records)
-	if err != nil {
-		fmt.Fprint(w, err.Error())
-		return
-	}
-	fmt.Fprint(w, "ok")
-}
-
-// @Tags analyze
-// @Summary analyze hot scheduler
-// @Produce json
-// @Success 200 {object} pdpb.GetMembersResponse
-// @Failure 500 {string} string "PD server failed to proceed the request."
-// @Router /analyze/{id} [get]
-func (analyze *PromAnalyze) GetResult(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id := vars["id"]
-	if len(id) == 0 {
-		fmt.Fprint(w, errs.Argument_Not_Match.Error())
-		return
-	}
-	records, err := analyze.server.storage.Get(id)
+	benchName := vars["bench_name"]
+	records, err := analyze.server.workloadStorage.GetWorkloadsByName(uint(id), benchName)
 	if err != nil {
 		fmt.Fprint(w, errs.Argument_Not_Match.Error())
 		return
@@ -109,14 +61,20 @@ func (analyze *PromAnalyze) GetResult(w http.ResponseWriter, r *http.Request) {
 }
 
 // @Tags analyze
-// @Summary analyze hot scheduler
+// @Summary get analyze
 // @Produce json
-// @Success 200 {object} pdpb.GetMembersResponse
+// @Success 200 {object}
 // @Failure 500 {string} string "PD server failed to proceed the request."
-// @Router /analyze/getAll [get]
-func (analyze *PromAnalyze) GetAll(w http.ResponseWriter, r *http.Request) {
+// @Router /analyze/{session_id} [get]
+func (analyze *PromAnalyze) GetWorkloads(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 10)
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+
 	query := r.URL.Query()
-	workload := query.Get("workload")
 	version := query.Get("version")
 	page, err := strconv.Atoi(query.Get("page"))
 	if err != nil {
@@ -128,7 +86,10 @@ func (analyze *PromAnalyze) GetAll(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, errs.Argument_Not_Match.Error())
 		return
 	}
-	loads, count, err := analyze.server.storage.GetAll(workload, version, page, size)
+
+	workload := query.Get("workload")
+
+	loads, count, err := analyze.server.workloadStorage.GetWorkload(workload, version, uint(sid), page, size)
 	if err != nil {
 		fmt.Fprint(w, errs.Argument_Not_Match.Error())
 		return
@@ -147,7 +108,7 @@ func (analyze *PromAnalyze) GetAll(w http.ResponseWriter, r *http.Request) {
 // @Tags analyze
 // @Summary analyze hot scheduler
 // @Produce json
-// @Success 200 {object} pdpb.GetMembersResponse
+// @Success 200 {object}
 // @Failure 500 {string} string "PD server failed to proceed the request."
 // @Router /analyze/getMetrics [get]
 func (analyze *PromAnalyze) GetMetrics(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +118,11 @@ func (analyze *PromAnalyze) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	query := r.URL.Query()
-	workload := query.Get("workload")
+	workload, err := strconv.ParseUint(query.Get("workload"), 10, 10)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
 	limit, err := strconv.Atoi(query.Get("limit"))
 	if err != nil {
 		fmt.Fprint(w, err.Error())
@@ -165,7 +130,7 @@ func (analyze *PromAnalyze) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	metrics := query["metrics"]
-	rst, err := analyze.server.storage.GetMetrics(workload, limit, metrics)
+	rst, err := analyze.server.workloadStorage.GetMetrics(uint(workload), limit, metrics)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return
@@ -177,23 +142,4 @@ func (analyze *PromAnalyze) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprint(w, string(body))
 	return
-}
-
-func (analyze *PromAnalyze) check(records *repository.Record) error {
-	for name, metrics := range metrics {
-		records.Metrics = make(map[string]float64)
-		for opName, m := range operators {
-			prefix := strings.Join([]string{name, opName}, "_")
-			d, err := analyze.server.checker.Apply(records.Start, records.End, name, metrics, fmt.Sprintf(m, name))
-			if err != nil {
-				return err
-			}
-			data := d.([]float64)
-			records.Metrics[strings.Join([]string{prefix, "min"}, "_")] = floats.Min(data)
-			records.Metrics[strings.Join([]string{prefix, "max"}, "_")] = floats.Max(data)
-			records.Metrics[strings.Join([]string{prefix, "mean"}, "_")] = stat.Mean(data, nil)
-			records.Metrics[strings.Join([]string{prefix, "std"}, "_")] = stat.StdDev(data, nil)
-		}
-	}
-	return nil
 }

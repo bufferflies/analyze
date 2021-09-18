@@ -63,7 +63,7 @@ func Report(cmd *cobra.Command, args []string) {
 		cmd.Printf("get bench id  err:%v", err)
 		return
 	}
-	url := address + "/analyze/" + id
+	url := address + "/tools/" + id
 	body, err := json.Marshal(records)
 	if err != nil {
 		cmd.Printf("json marshal failed err:%v", err)
