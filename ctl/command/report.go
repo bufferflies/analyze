@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -37,6 +38,7 @@ func NewReportCommand() *cobra.Command {
 	}
 	cmd.Flags().StringP("server", "s", "http://localhost:8080", "analyze server address")
 	cmd.Flags().StringP("id", "i", "test", "bench id")
+	cmd.Flags().Uint32P("session_id", "d", 1, "session id")
 	cmd.Flags().StringP("path", "p", "time.log", "record log path")
 	return cmd
 }
@@ -63,7 +65,13 @@ func Report(cmd *cobra.Command, args []string) {
 		cmd.Printf("get bench id  err:%v", err)
 		return
 	}
-	url := address + "/tools/" + id
+	sid, err := cmd.Flags().GetUint32("session_id")
+	if err != nil {
+		cmd.Printf("get session id  err:%v", err)
+		return
+	}
+	url := fmt.Sprintf("%s/tools/%d/%s", address, sid, id)
+	cmd.Println(url)
 	body, err := json.Marshal(records)
 	if err != nil {
 		cmd.Printf("json marshal failed err:%v", err)

@@ -19,6 +19,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/bufferflies/pd-analyze/repository"
+
 	"github.com/bufferflies/pd-analyze/errs"
 	"github.com/gorilla/mux"
 )
@@ -61,11 +63,38 @@ func (analyze *PromAnalyze) GetWorkloadsByBenchName(w http.ResponseWriter, r *ht
 }
 
 // @Tags analyze
+// @Summary get analyze workload names and type
+// @Produce json
+// @Success 200 {object}
+// @Failure 500 {string} string "PD server failed to proceed the request."
+// @Router /analyze/config/{session_id} [get]
+func (analyze *PromAnalyze) GetWorkloadNames(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 10)
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+
+	result, err := analyze.server.workloadStorage.GetWorkloadNameAndVersion(uint(sid))
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+	rsp, err := json.Marshal(result)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	fmt.Fprint(w, string(rsp))
+}
+
+// @Tags analyze
 // @Summary get analyze
 // @Produce json
 // @Success 200 {object}
 // @Failure 500 {string} string "PD server failed to proceed the request."
-// @Router /analyze/{session_id} [get]
+// @Router /analyze//workload{session_id} [get]
 func (analyze *PromAnalyze) GetWorkloads(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	sid, err := strconv.ParseUint(vars["session_id"], 10, 10)
@@ -88,8 +117,7 @@ func (analyze *PromAnalyze) GetWorkloads(w http.ResponseWriter, r *http.Request)
 	}
 
 	workload := query.Get("workload")
-
-	loads, count, err := analyze.server.workloadStorage.GetWorkload(workload, version, uint(sid), page, size)
+	count, loads, err := analyze.server.workloadStorage.GetWorkload(workload, version, uint(sid), page, size)
 	if err != nil {
 		fmt.Fprint(w, errs.Argument_Not_Match.Error())
 		return
@@ -106,23 +134,62 @@ func (analyze *PromAnalyze) GetWorkloads(w http.ResponseWriter, r *http.Request)
 }
 
 // @Tags analyze
+// @Summary get analyze
+// @Produce json
+// @Success 200 {object}
+// @Failure 500 {string} string "PD server failed to proceed the request."
+// @Router /analyze/bench/{session_id}/{name}/ [get]
+func (analyze *PromAnalyze) GetBench(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name := vars["name"]
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 10)
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+	loads, err := analyze.server.workloadStorage.GetWorkloadsByName(uint(sid), name)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	result := make([]WorkloadMetrics, len(loads))
+	for i, l := range loads {
+		metrics, err := analyze.server.workloadStorage.GetMetricsByLoads(l.ID)
+		if err != nil {
+			fmt.Fprint(w, err.Error())
+			return
+		}
+		result[i] = WorkloadMetrics{Workload: l, Metrics: metrics}
+	}
+
+	rsp, err := json.Marshal(result)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	fmt.Fprint(w, string(rsp))
+}
+
+// @Tags analyze
 // @Summary analyze hot scheduler
 // @Produce json
 // @Success 200 {object}
 // @Failure 500 {string} string "PD server failed to proceed the request."
 // @Router /analyze/getMetrics [get]
 func (analyze *PromAnalyze) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
+	vars := mux.Vars(r)
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 10)
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+	err = r.ParseForm()
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return
 	}
 	query := r.URL.Query()
-	workload, err := strconv.ParseUint(query.Get("workload"), 10, 10)
-	if err != nil {
-		fmt.Fprint(w, err.Error())
-		return
-	}
+	name := query.Get("workload")
 	limit, err := strconv.Atoi(query.Get("limit"))
 	if err != nil {
 		fmt.Fprint(w, err.Error())
@@ -130,7 +197,7 @@ func (analyze *PromAnalyze) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	metrics := query["metrics"]
-	rst, err := analyze.server.workloadStorage.GetMetrics(uint(workload), limit, metrics)
+	rst, err := analyze.server.workloadStorage.GetMetricsBySid(uint(sid), name, limit, metrics)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return
@@ -142,4 +209,9 @@ func (analyze *PromAnalyze) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprint(w, string(body))
 	return
+}
+
+type WorkloadMetrics struct {
+	repository.Workload
+	Metrics []repository.Metrics
 }

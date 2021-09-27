@@ -37,6 +37,7 @@ type Workload struct {
 	Cmd          string
 	TargetObject float64
 	BenchName    string
+	Version      string
 }
 
 func (Workload) TableName() string {
@@ -44,11 +45,13 @@ func (Workload) TableName() string {
 }
 
 type Metrics struct {
-	ID    uint `gorm:"AUTO_INCREMENT"`
-	WID   uint
-	Key   string
-	Value float64
-	Start time.Time
+	ID        uint `gorm:"AUTO_INCREMENT"`
+	WID       uint
+	Name      string
+	Key       string
+	Value     float64
+	Start     time.Time
+	SessionID uint
 }
 
 func (Metrics) TableName() string {

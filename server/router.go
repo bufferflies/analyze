@@ -77,15 +77,18 @@ func (server *Server) CreateRoute() *mux.Router {
 
 	analyzeRouters := router.PathPrefix("/analyze").Subrouter()
 	analyze := NewPromAnalyze(server)
-	analyzeRouters.HandleFunc("/metrics", analyze.GetMetrics).Methods(http.MethodGet, http.MethodOptions)
-	analyzeRouters.HandleFunc("//{session_id}", analyze.GetWorkloads).Methods(http.MethodGet, http.MethodOptions)
+	analyzeRouters.HandleFunc("/metrics/{session_id}", analyze.GetMetrics).Methods(http.MethodGet, http.MethodOptions)
+	analyzeRouters.HandleFunc("/config/{session_id}", analyze.GetWorkloadNames).Methods(http.MethodGet, http.MethodOptions)
+	analyzeRouters.HandleFunc("/workload/{session_id}", analyze.GetWorkloads).Methods(http.MethodGet, http.MethodOptions)
+	analyzeRouters.HandleFunc("/bench/{session_id}/{name}", analyze.GetBench).Methods(http.MethodGet, http.MethodOptions)
 
 	toolRouters := router.PathPrefix("/tools").Subrouter()
 	tools := NewTools(server)
-	toolRouters.HandleFunc("/tools/{session_id}/{bench_name}", tools.AnalyzeSchedule).Methods(http.MethodPost, http.MethodOptions)
+	toolRouters.HandleFunc("/{session_id}/{bench_name}", tools.AnalyzeSchedule).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/*", func(writer http.ResponseWriter, request *http.Request) {
 		fmt.Fprint(writer, "OK")
 	}).Methods(http.MethodOptions)
+
 	router.Use(CORSMiddleware)
 
 	return router

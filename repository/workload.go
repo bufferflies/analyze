@@ -25,10 +25,14 @@ type WorkloadStorage interface {
 
 	GetWorkloadsByName(sessionID uint, benchName string) ([]Workload, error)
 	GetWorkloadsBySessionID(sessionID uint) ([]Workload, error)
+	GetWorkloadNameAndVersion(sessionID uint) ([]Workload, error)
+
 	GetWorkload(workload, version string, sessionID uint, page, size int) (int64, []Workload, error)
 	GetWorkloadByID(id uint) (Workload, error)
 
 	GetMetrics(workload uint, limit int, metrics []string) (map[string][]Metrics, error)
+	GetMetricsBySid(sid uint, workload string, limit int, metrics []string) (map[string][]Metrics, error)
+	GetMetricsByLoads(wIDs uint) ([]Metrics, error)
 }
 
 type WorkloadDao struct {
@@ -49,7 +53,7 @@ func (p *WorkloadDao) GetWorkload(workload string, version string, sessionID uin
 	}
 	var workloads []Workload
 	offset := (page - 1) * size
-	if me := m.Offset(offset).Limit(size).Find(workloads); me.Error != nil {
+	if me := m.Offset(offset).Limit(size).Find(&workloads); me.Error != nil {
 		return 0, nil, me.Error
 	}
 	return total, workloads, nil
@@ -80,10 +84,12 @@ func (p *WorkloadDao) SaveRecords(sessionID uint, benchName string, records []Re
 	for i, r := range records {
 		for k, v := range r.Metrics {
 			m := &Metrics{
-				WID:   workloads[i].ID,
-				Key:   k,
-				Value: v,
-				Start: workloads[i].Start,
+				WID:       workloads[i].ID,
+				Key:       k,
+				Value:     v,
+				Start:     workloads[i].Start,
+				SessionID: sessionID,
+				Name:      r.Workload,
 			}
 			metrics = append(metrics, m)
 		}
@@ -119,7 +125,31 @@ func (p *WorkloadDao) GetMetrics(wid uint, limit int, metrics []string) (map[str
 		}
 	}
 	return rst, nil
+}
 
+func (p *WorkloadDao) GetMetricsBySid(sid uint, name string, limit int, metrics []string) (map[string][]Metrics, error) {
+	rst := make(map[string][]Metrics)
+	for _, v := range metrics {
+		var ms []Metrics
+		m := p.db.Where(&Metrics{Key: v, Name: name}).Order("start").Limit(limit).Find(&ms)
+		if m.Error != nil {
+			return nil, m.Error
+		}
+		rst[v] = ms
+	}
+	return rst, nil
+}
+
+func (p *WorkloadDao) GetWorkloadNameAndVersion(sessionID uint) ([]Workload, error) {
+	var workloads []Workload
+	m := p.db.Distinct("name").Where(&Workload{SessionID: sessionID}).Find(&workloads)
+	return workloads, m.Error
+}
+
+func (p *WorkloadDao) GetMetricsByLoads(wID uint) ([]Metrics, error) {
+	var metrics []Metrics
+	m := p.db.Where(&Metrics{WID: wID}).Find(&metrics)
+	return metrics, m.Error
 }
 
 func getTarget(target string, record Record) float64 {

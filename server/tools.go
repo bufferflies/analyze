@@ -48,11 +48,11 @@ func NewTools(server *Server) *Tools {
 }
 
 // @Tags analyze
-// @Summary analyze hot scheduler
+// @Summary analyze  scheduler
 // @Produce json
 // @Success 200 {object}
 // @Failure 500 {string} string "PD server failed to proceed the request."
-// @Router /analyze/{id} [Post]
+// @Router /tools/{session_id}/{bench_name} [Post]
 func (analyze *Tools) AnalyzeSchedule(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	sid, err := strconv.ParseInt(vars["session_id"], 10, 10)
