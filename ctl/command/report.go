@@ -136,8 +136,8 @@ func Report(cmd *cobra.Command, args []string) {
 func (config *ReportConfig) check(records *repository.Record) error {
 	source := core.NewPrometheus(config.prometheus)
 	checker := core.NewChecker(source)
+	records.Metrics = make(map[string]float64)
 	for name, metrics := range metrics {
-		records.Metrics = make(map[string]float64)
 		for opName, m := range operators {
 			prefix := strings.Join([]string{name, opName}, "_")
 			d, err := checker.Apply(records.Start, records.End, name, metrics, fmt.Sprintf(m, name))

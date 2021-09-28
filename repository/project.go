@@ -22,6 +22,7 @@ import (
 type ProjectStorage interface {
 	Save(name, description string) error
 	SaveSession(pid uint, name, targetObject string, object []string) error
+	UpdateSession(sid uint, name, targetObject string, object []string) error
 
 	GetAll() ([]Project, error)
 	GetSessions(projectID uint) ([]Session, error)
@@ -48,6 +49,12 @@ func (p ProjectDao) Save(name, description string) error {
 func (p ProjectDao) SaveSession(pid uint, name, targetObject string, object []string) error {
 	objects := strings.Join(object, ",")
 	m := p.db.Create(&Session{PID: pid, Name: name, Object: objects, TargetObject: targetObject})
+	return m.Error
+}
+
+func (p ProjectDao) UpdateSession(sid uint, name, targetObject string, object []string) error {
+	objects := strings.Join(object, ",")
+	m := p.db.Model(&Session{}).Updates(&Session{ID: sid, Name: name, Object: objects, TargetObject: targetObject})
 	return m.Error
 }
 

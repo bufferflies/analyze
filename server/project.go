@@ -62,7 +62,7 @@ func (s *ProjectServer) GetProjects(w http.ResponseWriter, r *http.Request) {
 
 func (s *ProjectServer) NewSession(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
-	pid, err := strconv.ParseUint(query.Get("project_id"), 10, 10)
+	pid, err := strconv.ParseUint(query.Get("project_id"), 10, 32)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return
@@ -72,6 +72,26 @@ func (s *ProjectServer) NewSession(w http.ResponseWriter, r *http.Request) {
 	targetObject := query.Get("target_object")
 	objects := query["objects"]
 	err = s.project.SaveSession(uint(pid), name, targetObject, objects)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	fmt.Fprint(w, "ok")
+}
+
+func (s *ProjectServer) UpdateSession(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 32)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+
+	query := r.URL.Query()
+	name := query.Get("name")
+	targetObject := query.Get("target_object")
+	objects := query["objects"]
+	err = s.project.UpdateSession(uint(sid), name, targetObject, objects)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return

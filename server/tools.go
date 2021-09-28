@@ -52,7 +52,7 @@ func NewTools(server *Server) *Tools {
 // @Router /tools/{session_id}/{bench_name} [Post]
 func (analyze *Tools) AnalyzeSchedule(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sid, err := strconv.ParseInt(vars["session_id"], 10, 10)
+	sid, err := strconv.ParseInt(vars["session_id"], 10, 32)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return

@@ -57,7 +57,7 @@ func CORSMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Add("Access-Control-Allow-Headers", "X-Requested-With, Content-Type,Origin, Authorization, Accept, Client-Security-Token, Accept-Encoding, X-Auth-Token, content-type")
 		w.Header().Set("content-type", "application/json")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE,PUT")
 		if r.Method == http.MethodOptions {
 			return
 		}
@@ -73,6 +73,7 @@ func (server *Server) CreateRoute() *mux.Router {
 	projectRouter.HandleFunc("/", projectServer.GetProjects).Methods(http.MethodGet)
 	projectRouter.HandleFunc("/new", projectServer.NewProject).Methods(http.MethodPost)
 	projectRouter.HandleFunc("/session/new", projectServer.NewSession).Methods(http.MethodPost)
+	projectRouter.HandleFunc("/session/{session_id}", projectServer.UpdateSession).Methods(http.MethodPost)
 	projectRouter.HandleFunc("/sessions/{project_id}", projectServer.GetSessions).Methods(http.MethodGet)
 	projectRouter.HandleFunc("/session/{session_id}", projectServer.GetSession).Methods(http.MethodGet)
 	projectRouter.HandleFunc("/session/{session_id}", projectServer.DeleteSession).Methods(http.MethodDelete, http.MethodOptions)
