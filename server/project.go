@@ -16,6 +16,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -61,17 +62,17 @@ func (s *ProjectServer) GetProjects(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *ProjectServer) NewSession(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	pid, err := strconv.ParseUint(query.Get("project_id"), 10, 32)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return
 	}
-
-	name := query.Get("name")
-	targetObject := query.Get("target_object")
-	objects := query["objects"]
-	err = s.project.SaveSession(uint(pid), name, targetObject, objects)
+	var session repository.Session
+	if err = json.Unmarshal(body, &session); err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	err = s.project.SaveSession(session)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return

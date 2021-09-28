@@ -30,11 +30,3 @@ type Record struct {
 	Cmd      string             `json:"bench_cmd"`
 	Metrics  map[string]float64 `json:"metrics"` //key metrics_max_avg
 }
-
-type Index struct {
-	Min  float64   `json:"min"`
-	Max  float64   `json:"max"`
-	Mean float64   `json:"mean"`
-	Std  float64   `json:"std"`
-	Data []float64 `json:"data"`
-}
