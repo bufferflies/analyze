@@ -43,7 +43,7 @@ func NewPromAnalyze(server *Server) *PromAnalyze {
 // @Router /analyze/{session_id}/{bench_name} [get]
 func (analyze *PromAnalyze) GetWorkloadsByBenchName(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id, err := strconv.ParseUint(vars["session_id"], 10, 10)
+	id, err := strconv.ParseUint(vars["session_id"], 10, 32)
 	if err != nil {
 		fmt.Fprint(w, err)
 		return
@@ -70,7 +70,7 @@ func (analyze *PromAnalyze) GetWorkloadsByBenchName(w http.ResponseWriter, r *ht
 // @Router /analyze/config/{session_id} [get]
 func (analyze *PromAnalyze) GetWorkloadNames(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sid, err := strconv.ParseUint(vars["session_id"], 10, 10)
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 32)
 	if err != nil {
 		fmt.Fprint(w, errs.Argument_Not_Match.Error())
 		return
@@ -97,7 +97,7 @@ func (analyze *PromAnalyze) GetWorkloadNames(w http.ResponseWriter, r *http.Requ
 // @Router /analyze//workload{session_id} [get]
 func (analyze *PromAnalyze) GetWorkloads(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sid, err := strconv.ParseUint(vars["session_id"], 10, 10)
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 32)
 	if err != nil {
 		fmt.Fprint(w, errs.Argument_Not_Match.Error())
 		return
@@ -134,15 +134,55 @@ func (analyze *PromAnalyze) GetWorkloads(w http.ResponseWriter, r *http.Request)
 }
 
 // @Tags analyze
+// @Summary delete workloads
+// @Produce json
+// @Success 200 {object}
+// @Router /analyze/workload/{workload_id} [get]
+func (analyze *PromAnalyze) DeleteWorkloads(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	wID, err := strconv.ParseUint(vars["workload_id"], 10, 32)
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+	if err = analyze.server.workloadStorage.DeleteWorkload(uint(wID)); err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+
+	fmt.Fprint(w, "ok")
+}
+
+// @Tags analyze
+// @Summary delete workloads
+// @Produce json
+// @Success 200 {object}
+// @Router /analyze/workload/{session_id}/{workload_name} [get]
+func (analyze *PromAnalyze) DeleteWorkloadByName(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sID, err := strconv.ParseUint(vars["session_id"], 10, 32)
+	if err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+
+	name := r.URL.Query().Get("workload_name")
+	if err = analyze.server.workloadStorage.DeleteWorkloadByName(uint(sID), name); err != nil {
+		fmt.Fprint(w, errs.Argument_Not_Match.Error())
+		return
+	}
+	fmt.Fprint(w, "ok")
+}
+
+// @Tags analyze
 // @Summary get analyze
 // @Produce json
 // @Success 200 {object}
-// @Failure 500 {string} string "PD server failed to proceed the request."
 // @Router /analyze/bench/{session_id}/{name}/ [get]
 func (analyze *PromAnalyze) GetBench(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	name := vars["name"]
-	sid, err := strconv.ParseUint(vars["session_id"], 10, 10)
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 32)
 	if err != nil {
 		fmt.Fprint(w, errs.Argument_Not_Match.Error())
 		return
@@ -178,7 +218,7 @@ func (analyze *PromAnalyze) GetBench(w http.ResponseWriter, r *http.Request) {
 // @Router /analyze/getMetrics [get]
 func (analyze *PromAnalyze) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sid, err := strconv.ParseUint(vars["session_id"], 10, 10)
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 32)
 	if err != nil {
 		fmt.Fprint(w, errs.Argument_Not_Match.Error())
 		return

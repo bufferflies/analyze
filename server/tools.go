@@ -19,13 +19,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
 
 	"github.com/bufferflies/pd-analyze/repository"
-	"gonum.org/v1/gonum/floats"
-	"gonum.org/v1/gonum/stat"
 )
 
 var (
@@ -73,36 +70,10 @@ func (analyze *Tools) AnalyzeSchedule(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err.Error())
 		return
 	}
-	for i := range records {
-		records[i].Metrics = make(map[string]float64)
-		if err := analyze.check(&records[i]); err != nil {
-			fmt.Fprint(w, err.Error())
-			return
-		}
-	}
 	err = analyze.server.workloadStorage.SaveRecords(uint(sid), benchName, records)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return
 	}
 	fmt.Fprint(w, "ok")
-}
-
-func (analyze *Tools) check(records *repository.Record) error {
-	for name, metrics := range metrics {
-		records.Metrics = make(map[string]float64)
-		for opName, m := range operators {
-			prefix := strings.Join([]string{name, opName}, "_")
-			d, err := analyze.server.checker.Apply(records.Start, records.End, name, metrics, fmt.Sprintf(m, name))
-			if err != nil {
-				return err
-			}
-			data := d.([]float64)
-			records.Metrics[strings.Join([]string{prefix, "min"}, "_")] = floats.Min(data)
-			records.Metrics[strings.Join([]string{prefix, "max"}, "_")] = floats.Max(data)
-			records.Metrics[strings.Join([]string{prefix, "mean"}, "_")] = stat.Mean(data, nil)
-			records.Metrics[strings.Join([]string{prefix, "std"}, "_")] = stat.StdDev(data, nil)
-		}
-	}
-	return nil
 }

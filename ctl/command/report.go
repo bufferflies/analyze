@@ -20,6 +20,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
+
+	"github.com/bufferflies/pd-analyze/core"
+
+	"gonum.org/v1/gonum/floats"
+	"gonum.org/v1/gonum/stat"
 
 	"github.com/bufferflies/pd-analyze/repository"
 	"github.com/spf13/cobra"
@@ -27,7 +33,31 @@ import (
 
 var (
 	dialClient = &http.Client{}
+	metrics    = map[string]string{
+		"tikv_cpu":   "sum(rate(tikv_thread_cpu_seconds_total{}[1m])) by (instance)",
+		"tikv_write": "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=\"wal_file_bytes\"}[1m])) by (instance)",
+		"tikv_read":  "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=~\"bytes_read|iter_bytes_read\"}[1m])) by (instance)",
+	}
+	operators = map[string]string{"mean": "mean(%s)", "std": "std(%s)"}
 )
+
+type ReportConfig struct {
+	prometheus string
+	server     string
+	sessionId  uint32
+	name       string
+	checker    *core.Checker
+	records    []repository.Record
+}
+
+func newReportConfig(prometheus string) *ReportConfig {
+	source := core.NewPrometheus(prometheus)
+	checker := core.NewChecker(source)
+	return &ReportConfig{
+		prometheus: prometheus,
+		checker:    checker,
+	}
+}
 
 // NewConfigCommand return a config subcommand of rootCmd
 func NewReportCommand() *cobra.Command {
@@ -37,42 +67,56 @@ func NewReportCommand() *cobra.Command {
 		Run:   Report,
 	}
 	cmd.Flags().StringP("server", "s", "http://localhost:8080", "analyze server address")
-	cmd.Flags().StringP("id", "i", "test", "bench id")
-	cmd.Flags().Uint32P("session_id", "d", 1, "session id")
-	cmd.Flags().StringP("path", "p", "time.log", "record log path")
+	cmd.Flags().StringP("name", "n", "test", "bench name")
+	cmd.Flags().Uint32P("session_id", "i", 1, "session id")
+	cmd.Flags().StringP("data", "d", "time.log", "record log path")
+	cmd.Flags().StringP("prometheus", "p", "localhost:9090", "prometheus address ")
 	return cmd
 }
 
 func Report(cmd *cobra.Command, args []string) {
-	path, err := cmd.Flags().GetString("path")
-	if err != nil {
-		cmd.Printf("path can not nil:%v", err)
-		return
-	}
-	records, err := ReadFile(path)
-	if err != nil {
-		cmd.Printf("read file fialed err:%v", err)
-		return
-	}
-
-	address, err := cmd.Flags().GetString("server")
-	if err != nil {
-		cmd.Printf("get analyze address failed err:%v", err)
-		return
-	}
-	id, err := cmd.Flags().GetString("id")
-	if err != nil {
-		cmd.Printf("get bench id  err:%v", err)
-		return
-	}
-	sid, err := cmd.Flags().GetUint32("session_id")
+	prometheus, err := cmd.Flags().GetString("prometheus")
 	if err != nil {
 		cmd.Printf("get session id  err:%v", err)
 		return
 	}
-	url := fmt.Sprintf("%s/tools/%d/%s", address, sid, id)
+	config := newReportConfig(prometheus)
+	path, err := cmd.Flags().GetString("data")
+	if err != nil {
+		cmd.Printf("data can not nil:%v", err)
+		return
+	}
+	if config.records, err = ReadFile(path); err != nil {
+		cmd.Printf("read file failed err:%v", err)
+		return
+	}
+
+	if config.server, err = cmd.Flags().GetString("server"); err != nil {
+		cmd.Printf("get analyze address failed err:%v", err)
+		return
+	}
+
+	if config.name, err = cmd.Flags().GetString("name"); err != nil {
+		cmd.Printf("get bench name  err:%v", err)
+		return
+	}
+
+	if config.sessionId, err = cmd.Flags().GetUint32("session_id"); err != nil {
+		cmd.Printf("get session id  err:%v", err)
+		return
+	}
+
+	url := fmt.Sprintf("%s/tools/%d/%s", config.server, config.sessionId, config.name)
 	cmd.Println(url)
-	body, err := json.Marshal(records)
+	for i := range config.records {
+		config.records[i].Metrics = make(map[string]float64)
+		if err := config.check(&config.records[i]); err != nil {
+			cmd.Println(err.Error())
+			return
+		}
+	}
+	cmd.Println(config.records)
+	body, err := json.Marshal(config.records)
 	if err != nil {
 		cmd.Printf("json marshal failed err:%v", err)
 		return
@@ -87,6 +131,27 @@ func Report(cmd *cobra.Command, args []string) {
 	}
 	return
 
+}
+
+func (config *ReportConfig) check(records *repository.Record) error {
+	source := core.NewPrometheus(config.prometheus)
+	checker := core.NewChecker(source)
+	for name, metrics := range metrics {
+		records.Metrics = make(map[string]float64)
+		for opName, m := range operators {
+			prefix := strings.Join([]string{name, opName}, "_")
+			d, err := checker.Apply(records.Start, records.End, name, metrics, fmt.Sprintf(m, name))
+			if err != nil {
+				return err
+			}
+			data := d.([]float64)
+			records.Metrics[strings.Join([]string{prefix, "min"}, "_")] = floats.Min(data)
+			records.Metrics[strings.Join([]string{prefix, "max"}, "_")] = floats.Max(data)
+			records.Metrics[strings.Join([]string{prefix, "mean"}, "_")] = stat.Mean(data, nil)
+			records.Metrics[strings.Join([]string{prefix, "std"}, "_")] = stat.StdDev(data, nil)
+		}
+	}
+	return nil
 }
 
 func ReadFile(path string) ([]repository.Record, error) {

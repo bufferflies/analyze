@@ -101,7 +101,7 @@ func (s *ProjectServer) GetSessions(w http.ResponseWriter, r *http.Request) {
 
 func (s *ProjectServer) GetSession(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	sid, err := strconv.ParseUint(vars["session_id"], 10, 10)
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 32)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return
@@ -117,4 +117,18 @@ func (s *ProjectServer) GetSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprint(w, string(body))
+}
+
+func (s *ProjectServer) DeleteSession(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	sid, err := strconv.ParseUint(vars["session_id"], 10, 32)
+	if err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	if err = s.project.DeleteSession(uint(sid)); err != nil {
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	fmt.Fprint(w, "ok")
 }

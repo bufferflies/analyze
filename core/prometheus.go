@@ -72,10 +72,10 @@ func (p *Prometheus) Get(metrics, start, end string) (values PrometheusData, err
 	req.URL.RawQuery = q.Encode()
 
 	rsp, err := p.client.Do(req)
-	defer rsp.Body.Close()
 	if err != nil {
 		return
 	}
+	defer rsp.Body.Close()
 	var data PrometheusResponse
 	body, err := ioutil.ReadAll(rsp.Body)
 	if err != nil {

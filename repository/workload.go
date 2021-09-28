@@ -29,6 +29,8 @@ type WorkloadStorage interface {
 
 	GetWorkload(workload, version string, sessionID uint, page, size int) (int64, []Workload, error)
 	GetWorkloadByID(id uint) (Workload, error)
+	DeleteWorkload(wID uint) error
+	DeleteWorkloadByName(sID uint, name string) error
 
 	GetMetrics(workload uint, limit int, metrics []string) (map[string][]Metrics, error)
 	GetMetricsBySid(sid uint, workload string, limit int, metrics []string) (map[string][]Metrics, error)
@@ -114,6 +116,39 @@ func (p *WorkloadDao) GetWorkloadByID(id uint) (Workload, error) {
 	var workload Workload
 	m := p.db.Where(&Workload{ID: id}).Find(&workload)
 	return workload, m.Error
+}
+
+func (p *WorkloadDao) DeleteWorkload(wID uint) error {
+	if m := p.db.Where(&Workload{ID: wID}).Delete(&Workload{}); m.Error != nil {
+		return m.Error
+	}
+	if m := p.db.Where(&Metrics{WID: wID}).Delete(&Metrics{}); m.Error != nil {
+		return m.Error
+	}
+	return nil
+}
+
+func (p *WorkloadDao) DeleteWorkloadByName(sID uint, name string) error {
+	if m := p.db.Where(&Workload{SessionID: sID, Name: name}).Delete(&Workload{}); m.Error != nil {
+		return m.Error
+	}
+	if m := p.db.Where(&Metrics{SessionID: sID, Name: name}).Delete(&Metrics{}); m.Error != nil {
+		return m.Error
+	}
+	return nil
+}
+
+func (p *WorkloadDao) DeleteSession(sID uint) error {
+	if m := p.db.Delete(&Session{ID: sID}); m.Error != nil {
+		return m.Error
+	}
+	if m := p.db.Delete(&Workload{SessionID: sID}); m.Error != nil {
+		return m.Error
+	}
+	if m := p.db.Delete(&Metrics{SessionID: sID}); m.Error != nil {
+		return m.Error
+	}
+	return nil
 }
 
 func (p *WorkloadDao) GetMetrics(wid uint, limit int, metrics []string) (map[string][]Metrics, error) {

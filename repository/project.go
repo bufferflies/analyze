@@ -79,6 +79,14 @@ func (p ProjectDao) DeleteProject(projectID uint) error {
 }
 
 func (p ProjectDao) DeleteSession(sessionID uint) error {
-	m := p.db.Delete(&Session{ID: sessionID})
-	return m.Error
+	if m := p.db.Where(&Session{ID: sessionID}).Delete(&Session{}); m.Error != nil {
+		return m.Error
+	}
+	if m := p.db.Where(&Workload{SessionID: sessionID}).Delete(&Workload{}); m.Error != nil {
+		return m.Error
+	}
+	if m := p.db.Where(&Metrics{SessionID: sessionID}).Delete(&Metrics{}); m.Error != nil {
+		return m.Error
+	}
+	return nil
 }

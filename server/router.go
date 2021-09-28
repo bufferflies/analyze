@@ -57,6 +57,7 @@ func CORSMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Add("Access-Control-Allow-Headers", "X-Requested-With, Content-Type,Origin, Authorization, Accept, Client-Security-Token, Accept-Encoding, X-Auth-Token, content-type")
 		w.Header().Set("content-type", "application/json")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE")
 		if r.Method == http.MethodOptions {
 			return
 		}
@@ -74,17 +75,20 @@ func (server *Server) CreateRoute() *mux.Router {
 	projectRouter.HandleFunc("/session/new", projectServer.NewSession).Methods(http.MethodPost)
 	projectRouter.HandleFunc("/sessions/{project_id}", projectServer.GetSessions).Methods(http.MethodGet)
 	projectRouter.HandleFunc("/session/{session_id}", projectServer.GetSession).Methods(http.MethodGet)
+	projectRouter.HandleFunc("/session/{session_id}", projectServer.DeleteSession).Methods(http.MethodDelete, http.MethodOptions)
 
 	analyzeRouters := router.PathPrefix("/analyze").Subrouter()
 	analyze := NewPromAnalyze(server)
-	analyzeRouters.HandleFunc("/metrics/{session_id}", analyze.GetMetrics).Methods(http.MethodGet, http.MethodOptions)
-	analyzeRouters.HandleFunc("/config/{session_id}", analyze.GetWorkloadNames).Methods(http.MethodGet, http.MethodOptions)
-	analyzeRouters.HandleFunc("/workload/{session_id}", analyze.GetWorkloads).Methods(http.MethodGet, http.MethodOptions)
-	analyzeRouters.HandleFunc("/bench/{session_id}/{name}", analyze.GetBench).Methods(http.MethodGet, http.MethodOptions)
+	analyzeRouters.HandleFunc("/metrics/{session_id}", analyze.GetMetrics).Methods(http.MethodGet)
+	analyzeRouters.HandleFunc("/config/{session_id}", analyze.GetWorkloadNames).Methods(http.MethodGet)
+	analyzeRouters.HandleFunc("/workload/{session_id}", analyze.GetWorkloads).Methods(http.MethodGet)
+	analyzeRouters.HandleFunc("/bench/{session_id}/{name}", analyze.GetBench).Methods(http.MethodGet)
+	analyzeRouters.HandleFunc("/workload/{workload_id}", analyze.DeleteWorkloads).Methods(http.MethodDelete, http.MethodOptions)
+	analyzeRouters.HandleFunc("/session/{session_id}", analyze.DeleteWorkloadByName).Methods(http.MethodDelete, http.MethodOptions)
 
 	toolRouters := router.PathPrefix("/tools").Subrouter()
 	tools := NewTools(server)
-	toolRouters.HandleFunc("/{session_id}/{bench_name}", tools.AnalyzeSchedule).Methods(http.MethodPost, http.MethodOptions)
+	toolRouters.HandleFunc("/{session_id}/{bench_name}", tools.AnalyzeSchedule).Methods(http.MethodPost)
 	router.HandleFunc("/*", func(writer http.ResponseWriter, request *http.Request) {
 		fmt.Fprint(writer, "OK")
 	}).Methods(http.MethodOptions)
