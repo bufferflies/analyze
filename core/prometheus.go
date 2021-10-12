@@ -2,10 +2,11 @@ package core
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
+
+	"github.com/bufferflies/pd-analyze/errs"
 )
 
 // prometheus api prefix
@@ -58,11 +59,10 @@ func (p *Prometheus) Source(metrics, start, end string) (data [][]float64, err e
 }
 
 // Get returns values from prometheus
-func (p *Prometheus) Get(metrics, start, end string) (values PrometheusData, err error) {
+func (p *Prometheus) Get(metrics, start, end string) (values *PrometheusData, err error) {
 	req, err := http.NewRequest(http.MethodGet, p.Address+prefix, nil)
 	if err != nil {
-		fmt.Printf("request init err:%v", err)
-		return
+		return nil, err
 	}
 	q := req.URL.Query()
 	q.Add("query", metrics)
@@ -73,13 +73,16 @@ func (p *Prometheus) Get(metrics, start, end string) (values PrometheusData, err
 
 	rsp, err := p.client.Do(req)
 	if err != nil {
-		return
+		return nil, err
 	}
 	defer rsp.Body.Close()
+	if rsp.StatusCode != http.StatusOK {
+		return nil, errs.Result_Not_Match
+	}
 	var data PrometheusResponse
 	body, err := ioutil.ReadAll(rsp.Body)
 	if err != nil {
-		return
+		return nil, err
 	}
 	if err = json.Unmarshal(body, &data); err != nil {
 		return
@@ -87,7 +90,7 @@ func (p *Prometheus) Get(metrics, start, end string) (values PrometheusData, err
 	if data.Status == fail {
 		return
 	}
-	return data.Data, nil
+	return &data.Data, nil
 }
 
 // ToArray convert prometheus to array

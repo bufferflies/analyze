@@ -69,17 +69,18 @@ func (Project) TableName() string {
 }
 
 type Session struct {
-	ID           uint   `json:"id" gorm:"AUTO_INCREMENT"`
-	PID          uint   `json:"pid"`
-	Name         string `json:"name"`
-	Description  string `json:"descript"`
-	Object       string `json:"object"`
-	TargetObject string `json:"target_object"`
-	PdAddress    string `json:"pd_address"`
-	TidbAddress  string `json:"tidb_address"`
-	PromAddress  string `json:"prom_address"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID             uint   `json:"id" gorm:"AUTO_INCREMENT"`
+	PID            uint   `json:"pid"`
+	Name           string `json:"name"`
+	Description    string `json:"descript"`
+	Object         string `json:"object"`
+	TargetObject   string `json:"target_object"`
+	PdAddress      string `json:"pd_address"`
+	TidbAddress    string `json:"tidb_address"`
+	PromAddress    string `json:"prom_address"`
+	GrafanaAddress string `json:"grafana_address"`
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 func (Session) TableName() string {
