@@ -102,7 +102,7 @@ func (s *ProjectServer) UpdateSession(w http.ResponseWriter, r *http.Request) {
 
 func (s *ProjectServer) GetSessions(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	pid, err := strconv.ParseUint(vars["project_id"], 10, 10)
+	pid, err := strconv.ParseUint(vars["project_id"], 10, 32)
 	if err != nil {
 		fmt.Fprint(w, err.Error())
 		return
