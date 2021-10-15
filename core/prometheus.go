@@ -5,19 +5,20 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/bufferflies/pd-analyze/errs"
 )
 
 // prometheus api prefix
-var prefix = "/api/v1/query_range"
-
-// prometheus result status
-type Status string
+var (
+	prefix   = "/api/v1/query_range"
+	duration = -2 * time.Minute
+	step     = "30s"
+)
 
 const (
-	success Status = "success"
-	fail           = "error"
+	fail = "error"
 )
 
 type Prometheus struct {
@@ -59,8 +60,13 @@ func (p *Prometheus) Source(metrics, start, end string) (data [][]float64, err e
 }
 
 // Get returns values from prometheus
-func (p *Prometheus) Get(metrics, start, end string) (values *PrometheusData, err error) {
+func (p *Prometheus) Get(metrics, _, end string) (values *PrometheusData, err error) {
 	req, err := http.NewRequest(http.MethodGet, p.Address+prefix, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	start, err := addDuration(end, duration)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +74,7 @@ func (p *Prometheus) Get(metrics, start, end string) (values *PrometheusData, er
 	q.Add("query", metrics)
 	q.Add("start", start)
 	q.Add("end", end)
-	q.Add("step", "30s")
+	q.Add("step", step)
 	req.URL.RawQuery = q.Encode()
 
 	rsp, err := p.client.Do(req)
@@ -104,4 +110,14 @@ func (values PrometheusData) ToArray() (stat [][]float64) {
 		stat[k] = arr
 	}
 	return
+}
+
+func addDuration(timestamp string, duration time.Duration) (string, error) {
+	ts, err := strconv.ParseInt(timestamp, 10, 64)
+	if err != nil {
+		return "", err
+	}
+	t := time.Unix(ts, 0)
+	then := t.Add(duration)
+	return strconv.FormatInt(then.Unix(), 10), err
 }

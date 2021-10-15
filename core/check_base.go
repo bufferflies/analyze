@@ -29,15 +29,11 @@ func Base(f fn) (ex govaluate.ExpressionFunction) {
 		switch args[0].(type) {
 		case [][]float64:
 			values := args[0].([][]float64)
-			max := make([]float64, len(values[0]))
-			for j := range values[0] {
-				series := make([]float64, len(values))
-				for i := range values {
-					series[i] = values[i][j]
-				}
-				max[j] = f(series)
+			result := make([]float64, len(values))
+			for i := range values {
+				result[i] = f(values[i])
 			}
-			return max, nil
+			return result, nil
 		case []float64:
 			values := args[0].([]float64)
 			rst := f(values)

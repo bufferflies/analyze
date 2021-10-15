@@ -22,10 +22,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bufferflies/pd-analyze/core"
-
-	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/stat"
+
+	"github.com/bufferflies/pd-analyze/core"
 
 	"github.com/bufferflies/pd-analyze/repository"
 	"github.com/spf13/cobra"
@@ -37,8 +36,15 @@ var (
 		"tikv_cpu":   "sum(rate(tikv_thread_cpu_seconds_total{}[1m])) by (instance)",
 		"tikv_write": "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=\"wal_file_bytes\"}[1m])) by (instance)",
 		"tikv_read":  "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=~\"bytes_read|iter_bytes_read\"}[1m])) by (instance)",
+
+		"store_write_rate_bytes": "pd_scheduler_store_status{ type=\"store_write_rate_bytes\"}",
+		"store_write_rate_keys":  "pd_scheduler_store_status{type=\"store_write_rate_keys\"}",
+		"store_write_query":      "pd_scheduler_store_status{type=\"store_write_query_rate\"}",
+
+		"store_read_rate_bytes": "pd_scheduler_store_status{ type=\"store_read_rate_bytes\"}",
+		"store_read_rate_keys":  "pd_scheduler_store_status{type=\"store_read_rate_keys\"}",
+		"store_read_query":      "pd_scheduler_store_status{type=\"store_read_query_rate\"}",
 	}
-	operators = map[string]string{"mean": "mean(%s)", "std": "std(%s)"}
 )
 
 type ReportConfig struct {
@@ -115,7 +121,6 @@ func Report(cmd *cobra.Command, args []string) {
 			return
 		}
 	}
-	cmd.Println(config.records)
 	body, err := json.Marshal(config.records)
 	if err != nil {
 		cmd.Printf("json marshal failed err:%v", err)
@@ -138,18 +143,19 @@ func (config *ReportConfig) check(records *repository.Record) error {
 	checker := core.NewChecker(source)
 	records.Metrics = make(map[string]float64)
 	for name, metrics := range metrics {
-		for opName, m := range operators {
-			prefix := strings.Join([]string{name, opName}, "_")
-			d, err := checker.Apply(records.Start, records.End, name, metrics, fmt.Sprintf(m, name))
-			if err != nil {
-				return err
-			}
-			data := d.([]float64)
-			records.Metrics[strings.Join([]string{prefix, "min"}, "_")] = floats.Min(data)
-			records.Metrics[strings.Join([]string{prefix, "max"}, "_")] = floats.Max(data)
-			records.Metrics[strings.Join([]string{prefix, "mean"}, "_")] = stat.Mean(data, nil)
-			records.Metrics[strings.Join([]string{prefix, "std"}, "_")] = stat.StdDev(data, nil)
+		d, err := checker.Apply(records.Start, records.End, name, metrics, fmt.Sprintf("mean(%s)", name))
+		if err != nil {
+			return err
 		}
+		data := d.([]float64)
+		mean, std := stat.MeanStdDev(data, nil)
+
+		records.Metrics[strings.Join([]string{name, "avg"}, "_")] = mean
+		records.Metrics[strings.Join([]string{name, "std"}, "_")] = std
+		if mean != 0 {
+			records.Metrics[strings.Join([]string{name, "std/avg"}, "_")] = std / mean
+		}
+
 	}
 	return nil
 }
