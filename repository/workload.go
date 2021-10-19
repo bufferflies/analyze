@@ -55,7 +55,7 @@ func (p *WorkloadDao) GetWorkload(workload string, version string, sessionID uin
 	}
 	var workloads []Workload
 	offset := (page - 1) * size
-	if me := m.Offset(offset).Limit(size).Find(&workloads); me.Error != nil {
+	if me := m.Order("id desc").Offset(offset).Limit(size).Find(&workloads); me.Error != nil {
 		return 0, nil, me.Error
 	}
 	return total, workloads, nil

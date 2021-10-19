@@ -14,15 +14,12 @@
 package server
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
-	"github.com/bufferflies/pd-analyze/repository"
-
-	"github.com/bufferflies/pd-analyze/core"
-
 	"github.com/bufferflies/pd-analyze/config"
+	"github.com/bufferflies/pd-analyze/core"
+	"github.com/bufferflies/pd-analyze/repository"
 	"github.com/gorilla/mux"
 )
 
@@ -55,7 +52,7 @@ func NewServer(config *config.Config) *Server {
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Add("Access-Control-Allow-Headers", "X-Requested-With, Content-Type,Origin, Authorization, Accept, Client-Security-Token, Accept-Encoding, X-Auth-Token, content-type")
+		w.Header().Add("Access-Control-Allow-Headers", "X-Requested-With, Content-Type,Origin, Authorization, Accept, Client-Security-Token, Accept-Encoding, X-Auth-Token, content-type,Target")
 		w.Header().Set("content-type", "application/json")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE,PUT")
 		if r.Method == http.MethodOptions {
@@ -90,11 +87,8 @@ func (server *Server) CreateRoute() *mux.Router {
 	toolRouters := router.PathPrefix("/tools").Subrouter()
 	tools := NewTools(server)
 	toolRouters.HandleFunc("/{session_id}/{bench_name}", tools.AnalyzeSchedule).Methods(http.MethodPost)
-	router.HandleFunc("/*", func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Fprint(writer, "OK")
-	}).Methods(http.MethodOptions)
 
+	router.PathPrefix("/proxy/{path}").Handler(NewProxy())
 	router.Use(CORSMiddleware)
-
 	return router
 }

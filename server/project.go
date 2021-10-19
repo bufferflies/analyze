@@ -20,9 +20,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
-
 	"github.com/bufferflies/pd-analyze/repository"
+	"github.com/gorilla/mux"
 )
 
 type ProjectServer struct {
