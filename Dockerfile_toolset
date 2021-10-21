@@ -40,8 +40,8 @@ COPY --from=tpcbuilder /go/src/github.com/pingcap/go-tpc/bin/* /bin/
 COPY --from=ycsbbuilder /go/src/github.com/pingcap/go-ycsb/bin/* /bin/
 COPY --from=ycsbbuilder /go/src/github.com/pingcap/go-ycsb/workloads/* /ycsb/workloads/
 COPY --from=brbuilder /go/src/github.com/pingcap/br/bin/* /bin/
-COPY --from=pdbuilder /go/src/github.com/pingcap/pd/bin/pd-ctl /bin/
-COPY --from=analyzebuilder /go/src/github.com/pingcap/pd/bin/pd-analyze /bin/
+COPY --from=pdbuilder /go/src/github.com/pingcap/go-pd/bin/pd-ctl /bin/
+COPY --from=analyzebuilder /go/src/github.com/pingcap/go-analyze/bin/pd-analyze /bin/
 ENV PATH="$PATH:/bin"
 
 RUN mkdir -p /go/src/github.com/pingcap/sysbench
