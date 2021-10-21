@@ -40,7 +40,6 @@ COPY --from=tpcbuilder /go/src/github.com/pingcap/go-tpc/bin/* /bin/
 COPY --from=ycsbbuilder /go/src/github.com/pingcap/go-ycsb/bin/* /bin/
 COPY --from=ycsbbuilder /go/src/github.com/pingcap/go-ycsb/workloads/* /ycsb/workloads/
 COPY --from=brbuilder /go/src/github.com/pingcap/br/bin/* /bin/
-COPY --from=brbuilder /go/src/github.com/pingcap/br/bin/pd-anlyze /bin/
 COPY --from=pdbuilder /go/src/github.com/pingcap/pd/bin/pd-ctl /bin/
 COPY --from=analyzebuilder /go/src/github.com/pingcap/pd/bin/pd-analyze /bin/
 ENV PATH="$PATH:/bin"
@@ -51,3 +50,6 @@ WORKDIR /go/src/github.com/pingcap/sysbench
 RUN apt-get update&&apt-get -y install make automake libtool pkg-config libaio-dev git&& apt-get -y install default-libmysqlclient-dev  libssl-dev&&git clone https://github.com/akopytov/sysbench.git .&&rm -rf ./third_party/luajit/luajit&&git clone https://github.com/openresty/luajit2.git ./third_party/luajit/luajit
 
 RUN ./autogen.sh&&./configure --with-mysql &&make -j&&make install
+
+WORKDIR /go/src
+

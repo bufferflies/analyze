@@ -33,25 +33,25 @@ import (
 var (
 	dialClient = &http.Client{}
 	metrics    = map[string]string{
-		// tikv metrics
-		"tikv_cpu":   "sum(rate(tikv_thread_cpu_seconds_total{}[1m])) by (instance)",
-		"tikv_write": "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=\"wal_file_bytes\"}[1m])) by (instance)",
-		"tikv_read":  "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=~\"bytes_read|iter_bytes_read\"}[1m])) by (instance)",
-
-		// pd metrics
-		"store_write_rate_bytes": "pd_scheduler_store_status{ type=\"store_write_rate_bytes\"}",
-		"store_write_rate_keys":  "pd_scheduler_store_status{type=\"store_write_rate_keys\"}",
-		"store_write_query":      "pd_scheduler_store_status{type=\"store_write_query_rate\"}",
-
-		"store_read_rate_bytes": "pd_scheduler_store_status{ type=\"store_read_rate_bytes\"}",
-		"store_read_rate_keys":  "pd_scheduler_store_status{type=\"store_read_rate_keys\"}",
-		"store_read_query":      "pd_scheduler_store_status{type=\"store_read_query_rate\"}",
+		//// tikv metrics
+		//"tikv_cpu":   "sum(rate(tikv_thread_cpu_seconds_total{}[1m])) by (instance)",
+		//"tikv_write": "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=\"wal_file_bytes\"}[1m])) by (instance)",
+		//"tikv_read":  "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=~\"bytes_read|iter_bytes_read\"}[1m])) by (instance)",
+		//
+		//// pd metrics
+		//"store_write_rate_bytes": "pd_scheduler_store_status{ type=\"store_write_rate_bytes\"}",
+		//"store_write_rate_keys":  "pd_scheduler_store_status{type=\"store_write_rate_keys\"}",
+		//"store_write_query":      "pd_scheduler_store_status{type=\"store_write_query_rate\"}",
+		//
+		//"store_read_rate_bytes": "pd_scheduler_store_status{ type=\"store_read_rate_bytes\"}",
+		//"store_read_rate_keys":  "pd_scheduler_store_status{type=\"store_read_rate_keys\"}",
+		//"store_read_query":      "pd_scheduler_store_status{type=\"store_read_query_rate\"}",
 
 		//tidb
-		"tidb_duration(P999)": "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket{}[1m])) by (le))",
-		"tidb_duration(P99)":  "histogram_quantile(0.99, sum(rate(tidb_server_handle_query_duration_seconds_bucket{}[1m])) by (le))",
-		"tidb_duration(P95)":  "histogram_quantile(0.95, sum(rate(tidb_server_handle_query_duration_seconds_bucket{}[1m])) by (le))",
-		"tidb_duration(P80)":  "histogram_quantile(0.80, sum(rate(tidb_server_handle_query_duration_seconds_bucket{}[1m])) by (le))",
+		"tidb_duration_P999": "histogram_quantile(0.999, sum(rate(tidb_server_handle_query_duration_seconds_bucket{}[1m])) by (le))",
+		"tidb_duration_P99":  "histogram_quantile(0.99, sum(rate(tidb_server_handle_query_duration_seconds_bucket{}[1m])) by (le))",
+		"tidb_duration_P95":  "histogram_quantile(0.95, sum(rate(tidb_server_handle_query_duration_seconds_bucket{}[1m])) by (le))",
+		"tidb_duration_P80":  "histogram_quantile(0.80, sum(rate(tidb_server_handle_query_duration_seconds_bucket{}[1m])) by (le))",
 
 		"tidb_command_per_second": "sum(rate(tidb_server_query_total{}[1m])) by (result)",
 	}
@@ -158,14 +158,17 @@ func (config *ReportConfig) check(records *repository.Record) error {
 			return err
 		}
 		data := d.([]float64)
+
 		mean, std := stat.MeanStdDev(data, nil)
-
-		records.Metrics[strings.Join([]string{name, "avg"}, "_")] = mean
-		records.Metrics[strings.Join([]string{name, "std"}, "_")] = std
-		if mean != 0 {
-			records.Metrics[strings.Join([]string{name, "std/avg"}, "_")] = std / mean
+		if strings.HasPrefix(name, "tidb") {
+			records.Metrics[name] = mean
+		} else {
+			records.Metrics[strings.Join([]string{name, "avg"}, "_")] = mean
+			records.Metrics[strings.Join([]string{name, "std"}, "_")] = std
+			if mean != 0 {
+				records.Metrics[strings.Join([]string{name, "std/avg"}, "_")] = std / mean
+			}
 		}
-
 	}
 	return nil
 }
