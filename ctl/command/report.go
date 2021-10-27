@@ -34,9 +34,7 @@ var (
 	dialClient = &http.Client{}
 	metrics    = map[string]string{
 		// tikv metrics
-		"tikv_cpu":   "sum(rate(tikv_thread_cpu_seconds_total{}[1m])) by (instance)",
-		"tikv_write": "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=\"wal_file_bytes\"}[1m])) by (instance)",
-		"tikv_read":  "sum(rate(tikv_engine_flow_bytes{ db=\"kv\", type=~\"bytes_read|iter_bytes_read\"}[1m])) by (instance)",
+		"tikv_cpu": "sum(rate(tikv_thread_cpu_seconds_total{}[1m])) by (instance)",
 
 		// pd metrics
 		"store_write_rate_bytes": "pd_scheduler_store_status{ type=\"store_write_rate_bytes\"}",
