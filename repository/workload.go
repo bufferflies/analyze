@@ -166,7 +166,7 @@ func (p *WorkloadDao) GetMetricsBySid(sid uint, name string, limit int, metrics 
 	rst := make(map[string][]Metrics)
 	for _, v := range metrics {
 		var ms []Metrics
-		m := p.db.Where(&Metrics{Key: v, Name: name, SessionID: sid}).Order("start").Limit(limit).Find(&ms)
+		m := p.db.Where(&Metrics{Key: v, Name: name, SessionID: sid}).Order("start DESC").Limit(limit).Find(&ms)
 		if m.Error != nil {
 			return nil, m.Error
 		}
