@@ -34,7 +34,7 @@ type Server struct {
 func NewServer(config *config.Config) *Server {
 	source := core.NewPrometheus(config.PrometheusAddress)
 	checker := core.NewChecker(source)
-	db, err := repository.NewMysqlManager(config.StorageAddress, "test1")
+	db, err := repository.NewMysqlManager(config.StorageAddress, "tinker")
 	if err != nil {
 		log.Fatal("storage init failed", err)
 	}

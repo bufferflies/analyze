@@ -30,7 +30,7 @@ func NewServerCommand() *cobra.Command {
 	}
 	cmd.PersistentFlags().StringP("listen_address", "a", "localhost:8080", "analyze listen address")
 	cmd.PersistentFlags().StringP("prometheus_address", "p", "http://172.16.4.3:22815/", "address of prometheus")
-	cmd.PersistentFlags().StringP("storage_address", "s", "172.16.4.3:25831", "storage address")
+	cmd.PersistentFlags().StringP("storage_address", "s", "172.16.4.4:3306", "storage address")
 	return cmd
 }
 

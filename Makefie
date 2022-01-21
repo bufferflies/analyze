@@ -1,0 +1,8 @@
+IMAGE="hub-new.pingcap.net/robert/toolset"
+VERSION="v1.4.1"
+
+docker-build:
+	docker build -t ${IMAGE}:${VERSION} -f Dockerfile_toolset .
+
+docker-push: docker-build
+	docker push ${IMAGE}:${VERSION}
